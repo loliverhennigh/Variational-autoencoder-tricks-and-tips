@@ -15,7 +15,9 @@ Ok, so this is really the whole reason I made this github. I had a problem for a
 For the example code I just set the fully connected layer to init to .1 std and that fixed it. I put it as a flag so you can see that if its set to .001 it will not converge.
 
 # Pictures!!!
-
-
+true image
+![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/real_balls.jpg)
+generated image
+![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/generated_balls.jpg)
 
 
