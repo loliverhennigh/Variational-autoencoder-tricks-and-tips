@@ -105,8 +105,8 @@ def fc_layer(inputs, hiddens, idx, flat = False, linear = False):
       dim = input_shape[1]
       inputs_processed = inputs
     
-    weights = _variable_with_weight_decay('weights', shape=[dim,hiddens],stddev=0.1, wd=FLAGS.weight_decay)
-    biases = _variable_on_cpu('biases', [hiddens], tf.constant_initializer(0.1))
+    weights = _variable_with_weight_decay('weights', shape=[dim,hiddens],stddev=FLAGS.weight_init, wd=FLAGS.weight_decay)
+    biases = _variable_on_cpu('biases', [hiddens], tf.constant_initializer(FLAGS.weight_init))
     if linear:
       return tf.add(tf.matmul(inputs_processed,weights),biases,name=str(idx)+'_fc')
   

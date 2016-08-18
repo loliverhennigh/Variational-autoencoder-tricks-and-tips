@@ -25,6 +25,8 @@ tf.app.flags.DEFINE_float('lr', .001,
                             """for dropout""")
 tf.app.flags.DEFINE_integer('batch_size', 128,
                             """batch size for training""")
+tf.app.flags.DEFINE_float('weight_init', .1,
+                            """weight init for fully connected layers""")
 
 
 def train():
