@@ -19,5 +19,9 @@ true image
 ![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/real_balls.jpg)
 generated image
 ![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/generated_balls.jpg)
-. This is only after like 10 mins on a cpu though.
+. This is only after like 10 mins on a cpu though. With the same training time and .001 std of the fully connected it does this,
+![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/bad_generated_balls.jpg)
+when the true is 
+![alt text](https://github.com/loliverhennigh/Variational-autoencoder-tricks-and-tips/blob/master/bad_real_balls.jpg)
+and the same amount of training time
 
