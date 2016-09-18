@@ -10,6 +10,8 @@ import cv2
 import bouncing_balls as b
 import layer_def as ld
 
+import matplotlib.pyplot as plt
+
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -19,8 +21,10 @@ tf.app.flags.DEFINE_integer('hidden_size', 20,
                             """size of hidden layer""")
 tf.app.flags.DEFINE_integer('max_step', 50000,
                             """max num of steps""")
-tf.app.flags.DEFINE_float('keep_prob', .5,
+tf.app.flags.DEFINE_float('keep_prob', 1.0,
                             """for dropout""")
+tf.app.flags.DEFINE_float('beta', .5,
+                            """ beta constant """)
 tf.app.flags.DEFINE_float('lr', .001,
                             """for dropout""")
 tf.app.flags.DEFINE_integer('batch_size', 128,
@@ -41,51 +45,48 @@ def train():
     # create network
     # encodeing part first
     # conv1
-    conv1 = ld.conv_layer(x, 3, 1, 32, "encode_1")
+    conv1 = ld.conv_layer(x, 3, 2, 8, "encode_1")
     # conv2
-    conv2 = ld.conv_layer(conv1, 3, 2, 64, "encode_2")
+    conv2 = ld.conv_layer(conv1, 3, 1, 8, "encode_2")
     # conv3
-    conv3 = ld.conv_layer(conv2, 3, 1, 64, "encode_3")
+    conv3 = ld.conv_layer(conv2, 3, 2, 8, "encode_3")
     # conv4
-    conv4 = ld.conv_layer(conv3, 3, 2, 128, "encode_4")
-    # conv5
-    conv5 = ld.conv_layer(conv4, 1, 1, 64, "encode_5")
+    conv4 = ld.conv_layer(conv3, 1, 1, 4, "encode_4")
     # fc5 
-    fc5 = ld.fc_layer(conv5, 512, "encode_6", True, False)
+    fc5 = ld.fc_layer(conv4, 128, "encode_5", True, False)
     # dropout maybe
     fc5_dropout = tf.nn.dropout(fc5, keep_prob)
     # y 
-    y = ld.fc_layer(fc5_dropout, (FLAGS.hidden_size) * 2, "encode_7", False, True)
+    y = ld.fc_layer(fc5_dropout, (FLAGS.hidden_size) * 2, "encode_6", False, True)
     mean, stddev = tf.split(1, 2, y)
     stddev =  tf.sqrt(tf.exp(stddev))
     # now decoding part
     # sample distrobution
     epsilon = tf.random_normal(mean.get_shape())
     y_sampled = mean + epsilon * stddev
+    # fc7
+    fc7 = ld.fc_layer(y_sampled, 128, "decode_7", False, False)
     # fc8
-    fc8 = ld.fc_layer(y_sampled, 512, "decode_8", False, False)
-    # fc9
-    fc9 = ld.fc_layer(fc8, 64*8*8, "decode_9", False, False)
-    conv9 = tf.reshape(fc9, [-1, 8, 8, 64])
+    fc8 = ld.fc_layer(fc7, 4*8*8, "decode_8", False, False)
+    conv9 = tf.reshape(fc8, [-1, 8, 8, 4])
     # conv10
-    conv10 = ld.transpose_conv_layer(conv9, 1, 1, 128, "decode_10")
+    conv10 = ld.transpose_conv_layer(conv9, 1, 1, 8, "decode_9")
     # conv11
-    conv11 = ld.transpose_conv_layer(conv10, 3, 2, 64, "decode_11")
+    conv11 = ld.transpose_conv_layer(conv10, 3, 2, 8, "decode_10")
     # conv12
-    conv12 = ld.transpose_conv_layer(conv11, 3, 1, 64, "decode_12")
+    conv12 = ld.transpose_conv_layer(conv11, 3, 1, 8, "decode_11")
     # conv13
-    conv13 = ld.transpose_conv_layer(conv12, 3, 2, 32, "decode_13")
-    # conv14
-    conv14 = ld.transpose_conv_layer(conv13, 3, 1, 3, "decode_14", True) # set activation to linear!!!!!!!!1
+    conv13 = ld.transpose_conv_layer(conv12, 3, 2, 3, "decode_12", True)
     # x_prime
-    x_prime = conv14
+    x_prime = conv13
     x_prime = tf.nn.sigmoid(x_prime)
 
     # now calc loss 
     epsilon = 1e-8
     # calc loss from vae
-    loss_vae = tf.reduce_sum(0.5 * (tf.square(mean) + tf.square(stddev) -
-                         2.0 * tf.log(stddev + epsilon) - 1.0))
+    kl_loss = 0.5 * (tf.square(mean) + tf.square(stddev) -
+                         2.0 * tf.log(stddev + epsilon) - 1.0)
+    loss_vae = FLAGS.beta * tf.reduce_sum(kl_loss)
     # log loss for reconstruction
     loss_reconstruction = tf.reduce_sum(-x * tf.log(x_prime + epsilon) -
                   (1.0 - x) * tf.log(1.0 - x_prime + epsilon)) 
@@ -93,7 +94,7 @@ def train():
     tf.scalar_summary('loss_vae', loss_vae)
     tf.scalar_summary('loss_reconstruction', loss_reconstruction)
     # calc total loss 
-    loss = tf.reduce_mean(loss_vae + loss_reconstruction)
+    loss = tf.reduce_sum(loss_vae + loss_reconstruction)
 
     # training
     train_op = tf.train.AdamOptimizer(FLAGS.lr).minimize(loss)
@@ -126,10 +127,10 @@ def train():
       t = time.time()
       _, loss_r = sess.run([train_op, loss],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
       elapsed = time.time() - t
-      print(elapsed)
+      #print(elapsed)
 
-      if step%100 == 0:
-        _ , loss_vae_r, loss_reconstruction_r, y_sampled_r, x_prime_r = sess.run([train_op, loss_vae, loss_reconstruction, y_sampled, x_prime],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
+      if step%5000 == 0:
+        _ , loss_vae_r, loss_reconstruction_r, y_sampled_r, x_prime_r, kl_loss_dis = sess.run([train_op, loss_vae, loss_reconstruction, y_sampled, x_prime, kl_loss],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
         summary_str = sess.run(summary_op, feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
         summary_writer.add_summary(summary_str, step) 
         print("loss vae value at " + str(loss_vae_r))
@@ -139,6 +140,10 @@ def train():
         print("time per batch is " + str(elapsed))
         cv2.imwrite("real_balls.jpg", np.uint8(dat[0, :, :, :]*255))
         cv2.imwrite("generated_balls.jpg", np.uint8(x_prime_r[0, :, :, :]*255))
+        kl_loss_dis = np.sort(np.sum(kl_loss_dis, axis=0))
+        plt.plot(kl_loss_dis, label="step " + str(step))
+        plt.legend(loc = 'center left')
+        plt.savefig('kl_error_dis.png')
       
       assert not np.isnan(loss_r), 'Model diverged with loss = NaN'
 
@@ -146,6 +151,7 @@ def train():
         checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
         saver.save(sess, checkpoint_path, global_step=step)  
         print("saved to " + FLAGS.train_dir)
+        print("step " + str(step))
 
 def main(argv=None):  # pylint: disable=unused-argument
   if tf.gfile.Exists(FLAGS.train_dir):
