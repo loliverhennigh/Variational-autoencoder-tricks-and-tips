@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_integer('max_step', 50000,
                             """max num of steps""")
 tf.app.flags.DEFINE_float('keep_prob', 1.0,
                             """for dropout""")
-tf.app.flags.DEFINE_float('beta', .5,
+tf.app.flags.DEFINE_float('beta', .1,
                             """ beta constant """)
 tf.app.flags.DEFINE_float('lr', .001,
                             """for dropout""")
@@ -129,8 +129,8 @@ def train():
       elapsed = time.time() - t
       #print(elapsed)
 
-      if step%5000 == 0:
-        _ , loss_vae_r, loss_reconstruction_r, y_sampled_r, x_prime_r, kl_loss_dis = sess.run([train_op, loss_vae, loss_reconstruction, y_sampled, x_prime, kl_loss],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
+      if step%500 == 0:
+        _ , loss_vae_r, loss_reconstruction_r, y_sampled_r, x_prime_r, kl_loss_dis, stddev_r = sess.run([train_op, loss_vae, loss_reconstruction, y_sampled, x_prime, kl_loss, stddev],feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
         summary_str = sess.run(summary_op, feed_dict={x:dat, keep_prob:FLAGS.keep_prob})
         summary_writer.add_summary(summary_str, step) 
         print("loss vae value at " + str(loss_vae_r))
@@ -141,9 +141,13 @@ def train():
         cv2.imwrite("real_balls.jpg", np.uint8(dat[0, :, :, :]*255))
         cv2.imwrite("generated_balls.jpg", np.uint8(x_prime_r[0, :, :, :]*255))
         kl_loss_dis = np.sort(np.sum(kl_loss_dis, axis=0))
-        plt.plot(kl_loss_dis, label="step " + str(step))
+        stddev_r = np.sort(np.sum(stddev_r, axis=0))
+        #plt.plot(kl_loss_dis, label="step " + str(step))
+        #plt.legend(loc = 'center left')
+        #plt.savefig('kl_error_dis.png')
+        plt.plot(stddev_r, label="step " + str(step))
         plt.legend(loc = 'center left')
-        plt.savefig('kl_error_dis.png')
+        plt.savefig('stddev_r.png')
       
       assert not np.isnan(loss_r), 'Model diverged with loss = NaN'
 
